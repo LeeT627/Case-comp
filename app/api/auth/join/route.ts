@@ -17,19 +17,34 @@ export async function POST(req: NextRequest) {
     const emailLower = email.toLowerCase()
     const emailDomain = emailLower.split('@')[1]
     
-    // Check if domain is allowed
-    const supabase = supabaseAdmin()
-    const { data: allowedDomain } = await supabase
-      .from('allowed_domain')
-      .select('campus_id, campus_name')
-      .eq('domain', emailDomain)
-      .single()
+    // Special test account exception
+    const isTestAccount = emailLower === 'himanshuraj6771@gmail.com'
     
-    if (!allowedDomain) {
-      return NextResponse.json(
-        { error: 'Your school email domain is not eligible for this competition' },
-        { status: 403 }
-      )
+    // Check if domain is allowed (or if it's the test account)
+    const supabase = supabaseAdmin()
+    let allowedDomain
+    
+    if (isTestAccount) {
+      // Use IIT Delhi as the campus for test account
+      allowedDomain = {
+        campus_id: 'test-campus-id',
+        campus_name: 'Test Campus (IIT Delhi)'
+      }
+    } else {
+      const { data } = await supabase
+        .from('allowed_domain')
+        .select('campus_id, campus_name')
+        .eq('domain', emailDomain)
+        .single()
+      
+      allowedDomain = data
+      
+      if (!allowedDomain) {
+        return NextResponse.json(
+          { error: 'Your school email domain is not eligible for this competition' },
+          { status: 403 }
+        )
+      }
     }
     
     // Connect to GPai database
