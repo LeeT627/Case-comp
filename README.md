@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GPai Campus Case Competition Platform
 
-## Getting Started
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/leet627s-projects/case-comp)
 
-First, run the development server:
+## 🚀 Live Deployment
+
+- **Production**: [https://case-comp.vercel.app](https://case-comp.vercel.app)
+- **Vercel Dashboard**: [https://vercel.com/leet627s-projects/case-comp](https://vercel.com/leet627s-projects/case-comp)
+- **GitHub Repo**: [https://github.com/LeeT627/Case-comp](https://github.com/LeeT627/Case-comp)
+
+## 📋 Project Overview
+
+A competition platform for IIT students to showcase GPai adoption through referrals and case submissions.
+
+### Key Features
+- 🎓 IIT-exclusive participation (23 campuses)
+- 📊 Real-time referral tracking and dashboards
+- 🔓 Unlocks at 5 eligible referrals
+- 📈 DAU and activation metrics
+- 📁 PDF/PPT submissions (up to 50MB)
+- ⏱️ Minute-by-minute data sync from GPai
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **Database**: Supabase (PostgreSQL)
+- **Data Source**: GPai RDS (read-only)
+- **Hosting**: Vercel
+- **Cron**: Every minute data ingestion
+
+## ⚙️ Environment Variables (Required in Vercel)
+
+Go to [Vercel Settings → Environment Variables](https://vercel.com/leet627s-projects/case-comp/settings/environment-variables) and add:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Supabase (from your Supabase project)
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# GPai Database (read-only)
+GPAI_DB_URL=postgresql://comp_ro:PASSWORD@gpai.cluster-cnbeqlnoaeg9.us-west-2.rds.amazonaws.com:5432/production
+
+# JWT Secret (generate with: openssl rand -base64 32)
+JWT_SECRET=your_random_secret_here
+
+# Base URL
+NEXT_PUBLIC_BASE_URL=https://case-comp.vercel.app
+
+# Cron Secret (optional but recommended)
+CRON_SECRET=your_cron_secret
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📊 Monitoring
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Check Deployment Status
+1. Go to [Vercel Dashboard](https://vercel.com/leet627s-projects/case-comp)
+2. Check Functions tab for cron logs
+3. Verify environment variables are set
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Cron Job Status
+- **Endpoint**: `/api/cron/ingest`
+- **Schedule**: Every minute (`* * * * *`)
+- **Logs**: [View in Vercel Functions](https://vercel.com/leet627s-projects/case-comp/functions)
 
-## Learn More
+### Test Endpoints
+- Health Check: [/api/health](https://case-comp.vercel.app/api/health)
+- Cron Status: [/api/cron/ingest](https://case-comp.vercel.app/api/cron/ingest) (requires auth)
 
-To learn more about Next.js, take a look at the following resources:
+## 🚦 Quick Setup Checklist
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [ ] Supabase project created
+- [ ] Database schema applied (`setup/2_supabase_schema.sql`)
+- [ ] Storage bucket created (`setup/3_supabase_storage.sql`)
+- [ ] GPai read-only user created (`setup/1_gpai_readonly_user.sql`)
+- [ ] Environment variables added in Vercel
+- [ ] Cron job enabled in Vercel
+- [ ] Domain configured (optional: contest.gpai.app)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📝 Competition Status
 
-## Deploy on Vercel
+- **Start Date**: Live now
+- **End Date**: TBD
+- **Case Brief**: TBD
+- **Eligible Domains**: All IIT campuses (.iit*.ac.in)
+- **Unlock Threshold**: 5 referrals
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔧 Local Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Clone the repo
+git clone https://github.com/LeeT627/Case-comp.git
+cd Case-comp
+
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.local.example .env.local
+# Edit .env.local with your credentials
+
+# Run development server
+npm run dev
+```
+
+## 📚 Documentation
+
+- [Setup Instructions](./SETUP_INSTRUCTIONS.md)
+- [Database Schema](./setup/2_supabase_schema.sql)
+- [API Documentation](./docs/API.md) (coming soon)
+
+## 🤝 Support
+
+For issues or questions:
+- Check [Vercel Logs](https://vercel.com/leet627s-projects/case-comp/functions)
+- Review [Supabase Dashboard](https://app.supabase.com)
+- Open an [Issue on GitHub](https://github.com/LeeT627/Case-comp/issues)
+
+---
+
+Built with ❤️ for GPai Campus Competition
