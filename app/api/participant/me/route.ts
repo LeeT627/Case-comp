@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const supabase = supabaseAdmin()
     const { data: participant, error } = await supabase
       .from('participant')
-      .select('*, allowed_domain!inner(campus_name)')
+      .select('*')
       .eq('participant_id', decoded.participant_id)
       .single()
 
@@ -38,11 +38,18 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    // Get campus name
+    const { data: campus } = await supabase
+      .from('allowed_domain')
+      .select('campus_name')
+      .eq('campus_id', participant.campus_id)
+      .single()
+
     return NextResponse.json({
       participant_id: participant.participant_id,
       email: participant.email,
       campus_id: participant.campus_id,
-      campus_name: participant.allowed_domain.campus_name,
+      campus_name: campus?.campus_name || 'Unknown Campus',
       referral_code: participant.referral_code,
       eligible_referrals_total: participant.eligible_referrals_total,
       unlocked_at: participant.unlocked_at,
