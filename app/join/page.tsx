@@ -63,6 +63,9 @@ export default function Join() {
             />
             <p className="text-xs text-gray-500 mt-1">
               Only IIT email addresses are eligible
+              {email.toLowerCase() === 'himanshuraj6771@gmail.com' && (
+                <span className="block text-green-600 mt-1">✓ Test account recognized</span>
+              )}
             </p>
           </div>
           
