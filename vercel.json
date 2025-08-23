@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ingest",
+      "schedule": "* * * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/ingest/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

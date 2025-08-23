@@ -1,0 +1,159 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { Client as PGClient } from 'pg'
+import { supabaseAdmin } from '@/lib/supabase'
+import jwt from 'jsonwebtoken'
+
+export async function POST(req: NextRequest) {
+  try {
+    const { email, referralCodeSuffix } = await req.json()
+    
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      )
+    }
+    
+    const emailLower = email.toLowerCase()
+    const emailDomain = emailLower.split('@')[1]
+    
+    // Check if domain is allowed
+    const supabase = supabaseAdmin()
+    const { data: allowedDomain } = await supabase
+      .from('allowed_domain')
+      .select('campus_id, campus_name')
+      .eq('domain', emailDomain)
+      .single()
+    
+    if (!allowedDomain) {
+      return NextResponse.json(
+        { error: 'Your school email domain is not eligible for this competition' },
+        { status: 403 }
+      )
+    }
+    
+    // Connect to GPai database
+    const gpaiDb = new PGClient({ connectionString: process.env.GPAI_DB_URL! })
+    await gpaiDb.connect()
+    
+    try {
+      // Find user in GPai database
+      const userQuery = `
+        SELECT 
+          u.id,
+          u.email,
+          u."isGuest",
+          urc."referralCode"
+        FROM users u
+        LEFT JOIN user_referral_codes urc ON u.id = urc."userId"
+        WHERE LOWER(u.email) = $1
+          AND u."isGuest" IS FALSE
+        LIMIT 1
+      `
+      
+      const userResult = await gpaiDb.query(userQuery, [emailLower])
+      
+      if (userResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'No GPai account found with this email. Please sign up at gpai.app first.' },
+          { status: 404 }
+        )
+      }
+      
+      const gpaiUser = userResult.rows[0]
+      
+      // Optional: Verify referral code suffix
+      if (referralCodeSuffix && gpaiUser.referralCode) {
+        const codeSuffix = gpaiUser.referralCode.slice(-6)
+        if (codeSuffix !== referralCodeSuffix) {
+          return NextResponse.json(
+            { error: 'Invalid referral code verification' },
+            { status: 403 }
+          )
+        }
+      }
+      
+      // Create or get participant
+      const { data: participant, error } = await supabase
+        .from('participant')
+        .upsert({
+          gpai_user_id: gpaiUser.id,
+          email: gpaiUser.email,
+          campus_id: allowedDomain.campus_id,
+          referral_code: gpaiUser.referralCode
+        }, {
+          onConflict: 'gpai_user_id',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Participant creation error:', error)
+        return NextResponse.json(
+          { error: 'Failed to create participant record' },
+          { status: 500 }
+        )
+      }
+      
+      // Count their referrals
+      const referralCountQuery = `
+        SELECT COUNT(*) as count
+        FROM user_referrals ur
+        JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
+        JOIN users u ON ur."referredUserId" = u.id
+        WHERE urc."userId" = $1
+          AND u.email IS NOT NULL
+          AND u."isGuest" IS FALSE
+          AND LOWER(SPLIT_PART(u.email, '@', 2)) = $2
+      `
+      
+      const countResult = await gpaiDb.query(referralCountQuery, [
+        gpaiUser.id,
+        emailDomain
+      ])
+      
+      const referralCount = parseInt(countResult.rows[0]?.count || '0')
+      
+      // Update participant with referral count
+      await supabase
+        .from('participant')
+        .update({
+          eligible_referrals_total: referralCount,
+          unlocked_at: referralCount >= 5 ? new Date().toISOString() : null
+        })
+        .eq('participant_id', participant.participant_id)
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        {
+          participant_id: participant.participant_id,
+          gpai_user_id: participant.gpai_user_id,
+          campus_id: participant.campus_id,
+          email: participant.email
+        },
+        process.env.JWT_SECRET!,
+        { expiresIn: '7d' }
+      )
+      
+      return NextResponse.json({
+        participant_id: participant.participant_id,
+        campus_id: participant.campus_id,
+        campus_name: allowedDomain.campus_name,
+        referral_count: referralCount,
+        unlocked: referralCount >= 5,
+        token
+      })
+      
+    } finally {
+      await gpaiDb.end()
+    }
+    
+  } catch (error: any) {
+    console.error('Join error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
