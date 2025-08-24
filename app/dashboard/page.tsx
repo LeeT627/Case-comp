@@ -18,6 +18,12 @@ interface Metrics {
   referred_dau: number;
   campus_rank: number;
   overall_rank: number;
+  activation_rate?: number;
+  retention_rate?: number;
+  total_participants?: number;
+  campus_participants?: number;
+  days_remaining?: number;
+  last_updated?: string;
 }
 
 export default function Dashboard() {
@@ -142,35 +148,57 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600 mb-1">Total Signups</p>
-            <p className="text-3xl font-bold">{metrics?.total_signups || 0}</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Your Referrals</p>
+                <p className="text-3xl font-bold">{metrics?.total_signups || 0}</p>
+                <p className="text-xs text-green-600 mt-1">+{participant?.eligible_referrals_total || 0} total</p>
+              </div>
+              <span className="text-2xl">👥</span>
+            </div>
           </div>
           
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600 mb-1">D1 Activated</p>
-            <p className="text-3xl font-bold">{metrics?.d1_activated || 0}</p>
-            <p className="text-xs text-gray-500">
-              {metrics?.total_signups ? 
-                `${Math.round((metrics.d1_activated / metrics.total_signups) * 100)}%` : 
-                '0%'
-              }
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Activation Rate</p>
+                <p className="text-3xl font-bold">
+                  {metrics?.total_signups ? 
+                    `${Math.round((metrics.d1_activated / metrics.total_signups) * 100)}%` : 
+                    '0%'
+                  }
+                </p>
+                <p className="text-xs text-gray-500 mt-1">{metrics?.d1_activated || 0} activated</p>
+              </div>
+              <span className="text-2xl">🚀</span>
+            </div>
           </div>
           
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600 mb-1">D7 Retained</p>
-            <p className="text-3xl font-bold">{metrics?.d7_retained || 0}</p>
-            <p className="text-xs text-gray-500">
-              {metrics?.total_signups ? 
-                `${Math.round((metrics.d7_retained / metrics.total_signups) * 100)}%` : 
-                '0%'
-              }
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Retention Rate</p>
+                <p className="text-3xl font-bold">
+                  {metrics?.total_signups ? 
+                    `${Math.round((metrics.d7_retained / metrics.total_signups) * 100)}%` : 
+                    '0%'
+                  }
+                </p>
+                <p className="text-xs text-gray-500 mt-1">{metrics?.d7_retained || 0} retained</p>
+              </div>
+              <span className="text-2xl">📊</span>
+            </div>
           </div>
           
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600 mb-1">Referred DAU</p>
-            <p className="text-3xl font-bold">{metrics?.referred_dau || 0}</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Active Today</p>
+                <p className="text-3xl font-bold">{metrics?.referred_dau || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">from your referrals</p>
+              </div>
+              <span className="text-2xl">🔥</span>
+            </div>
           </div>
         </div>
 
@@ -185,6 +213,24 @@ export default function Dashboard() {
             <p className="text-sm opacity-90 mb-1">Overall Rank</p>
             <p className="text-4xl font-bold">#{metrics?.overall_rank || '-'}</p>
             <p className="text-sm opacity-90 mt-2">Across all IITs</p>
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⏱️</span>
+                <div>
+                  <p className="font-semibold">Competition Status</p>
+                  <p className="text-sm text-gray-600">Submission deadline: TBD</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Last updated</p>
+                <p className="text-sm font-medium">{metrics?.last_updated ? new Date(metrics.last_updated).toLocaleTimeString() : 'Loading...'}</p>
+              </div>
+            </div>
           </div>
         </div>
 
