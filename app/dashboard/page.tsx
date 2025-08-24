@@ -91,25 +91,6 @@ export default function Dashboard() {
     }
   };
 
-  const populateTestData = async () => {
-    const token = localStorage.getItem('competition_token');
-    try {
-      const response = await fetch('/api/test/populate-metrics', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        alert('Test data populated! Refreshing...');
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to populate test data:', error);
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

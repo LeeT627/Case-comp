@@ -1,121 +1,117 @@
 # GPai Campus Case Competition Platform
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/leet627s-projects/case-comp)
+A competition platform for IIT students to drive GPai adoption through referrals and case study submissions.
 
-## 🚀 Live Deployment
+## Features
 
-- **Production**: [https://case-comp.vercel.app](https://case-comp.vercel.app)
-- **Vercel Dashboard**: [https://vercel.com/leet627s-projects/case-comp](https://vercel.com/leet627s-projects/case-comp)
-- **GitHub Repo**: [https://github.com/LeeT627/Case-comp](https://github.com/LeeT627/Case-comp)
+- 🎓 **IIT-Only Access**: Restricted to students with IIT email domains
+- 📊 **Live Dashboard**: Real-time metrics that update every minute
+- 🔒 **Referral Gate**: Dashboard unlocks at 5 eligible referrals
+- 📈 **Performance Metrics**: Track D1 activation, D7 retention, and DAU
+- 🏆 **Leaderboards**: Campus and overall rankings
+- 📝 **Case Submissions**: Upload PPT/PDF case studies
 
-## 📋 Project Overview
+## Quick Start
 
-A competition platform for IIT students to showcase GPai adoption through referrals and case submissions.
+### Prerequisites
 
-### Key Features
-- 🎓 IIT-exclusive participation (23 campuses)
-- 📊 Real-time referral tracking and dashboards
-- 🔓 Unlocks at 5 eligible referrals
-- 📈 DAU and activation metrics
-- 📁 PDF/PPT submissions (up to 50MB)
-- ⏱️ Minute-by-minute data sync from GPai
+- Node.js 18+
+- PostgreSQL (via Supabase)
+- Vercel account for deployment
 
-## 🛠️ Tech Stack
+### Local Development
 
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
-- **Database**: Supabase (PostgreSQL)
-- **Data Source**: GPai RDS (read-only)
-- **Hosting**: Vercel
-- **Cron**: Every minute data ingestion
-
-## ⚙️ Environment Variables (Required in Vercel)
-
-Go to [Vercel Settings → Environment Variables](https://vercel.com/leet627s-projects/case-comp/settings/environment-variables) and add:
-
+1. Clone the repository
 ```bash
-# Supabase (from your Supabase project)
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# GPai Database (read-only)
-GPAI_DB_URL=postgresql://comp_ro:PASSWORD@gpai.cluster-cnbeqlnoaeg9.us-west-2.rds.amazonaws.com:5432/production
-
-# JWT Secret (generate with: openssl rand -base64 32)
-JWT_SECRET=your_random_secret_here
-
-# Base URL
-NEXT_PUBLIC_BASE_URL=https://case-comp.vercel.app
-
-# Cron Secret (optional but recommended)
-CRON_SECRET=your_cron_secret
+git clone https://github.com/LeeT627/Case-comp.git
+cd gpai-competition-app
 ```
 
-## 📊 Monitoring
-
-### Check Deployment Status
-1. Go to [Vercel Dashboard](https://vercel.com/leet627s-projects/case-comp)
-2. Check Functions tab for cron logs
-3. Verify environment variables are set
-
-### Cron Job Status
-- **Endpoint**: `/api/cron/ingest`
-- **Schedule**: Every minute (`* * * * *`)
-- **Logs**: [View in Vercel Functions](https://vercel.com/leet627s-projects/case-comp/functions)
-
-### Test Endpoints
-- Health Check: [/api/health](https://case-comp.vercel.app/api/health)
-- Cron Status: [/api/cron/ingest](https://case-comp.vercel.app/api/cron/ingest) (requires auth)
-
-## 🚦 Quick Setup Checklist
-
-- [ ] Supabase project created
-- [ ] Database schema applied (`setup/2_supabase_schema.sql`)
-- [ ] Storage bucket created (`setup/3_supabase_storage.sql`)
-- [ ] GPai read-only user created (`setup/1_gpai_readonly_user.sql`)
-- [ ] Environment variables added in Vercel
-- [ ] Cron job enabled in Vercel
-- [ ] Domain configured (optional: contest.gpai.app)
-
-## 📝 Competition Status
-
-- **Start Date**: Live now
-- **End Date**: TBD
-- **Case Brief**: TBD
-- **Eligible Domains**: All IIT campuses (.iit*.ac.in)
-- **Unlock Threshold**: 5 referrals
-
-## 🔧 Local Development
-
+2. Install dependencies
 ```bash
-# Clone the repo
-git clone https://github.com/LeeT627/Case-comp.git
-cd Case-comp
-
-# Install dependencies
 npm install
+```
 
-# Set up environment
+3. Set up environment variables
+```bash
 cp .env.local.example .env.local
 # Edit .env.local with your credentials
+```
 
-# Run development server
+4. Run the development server
+```bash
 npm run dev
 ```
 
-## 📚 Documentation
+Visit `http://localhost:3000`
 
-- [Setup Instructions](./SETUP_INSTRUCTIONS.md)
-- [Database Schema](./setup/2_supabase_schema.sql)
-- [API Documentation](./docs/API.md) (coming soon)
+### Database Setup
 
-## 🤝 Support
+1. Create a Supabase project
+2. Run setup scripts in order:
+   - `setup/1_gpai_readonly_user.sql` (on GPai database)
+   - `setup/2_supabase_schema.sql` (on Supabase)
+   - `setup/3_supabase_storage.sql` (on Supabase)
 
-For issues or questions:
-- Check [Vercel Logs](https://vercel.com/leet627s-projects/case-comp/functions)
-- Review [Supabase Dashboard](https://app.supabase.com)
-- Open an [Issue on GitHub](https://github.com/LeeT627/Case-comp/issues)
+## Architecture
 
----
+- **Frontend**: Next.js 15.5 with App Router, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Supabase (PostgreSQL) + GPai RDS (read-only)
+- **Deployment**: Vercel with automatic CI/CD
+- **Data Sync**: Cron job runs every minute to sync GPai data
 
-Built with ❤️ for GPai Campus Competition
+## Key Flows
+
+### Join Flow
+1. User enters IIT email
+2. System verifies domain is allowed
+3. Checks GPai account exists
+4. Counts referrals (live from GPai)
+5. Creates participant record
+6. Issues JWT token
+
+### Dashboard Flow
+1. Auto-fetches live metrics on load
+2. Refreshes every 60 seconds
+3. Shows real-time referral counts
+4. Updates rankings dynamically
+
+## Project Structure
+
+See `PROJECT_STRUCTURE.md` for detailed directory layout.
+
+## Database Schema
+
+See `GPAI_DATABASE_STRUCTURE.md` for GPai database reference.
+
+## Environment Variables
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_key
+
+# GPai Database
+GPAI_DB_URL=postgresql://comp_ro:password@host:5432/production
+
+# Security
+JWT_SECRET=your_jwt_secret
+CRON_SECRET=your_cron_secret
+```
+
+## Deployment
+
+Deployed automatically via Vercel on push to main branch.
+
+## Test Account
+
+For testing purposes, `himanshuraj6771@gmail.com` is whitelisted as a test account that:
+- Bypasses IIT domain check
+- Shows all referrals (not domain-restricted)
+- Maps to IIT Delhi campus
+
+## License
+
+Private - All rights reserved
