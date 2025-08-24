@@ -16,37 +16,36 @@ export async function GET() {
     checks: {}
   }
   
-  // Check Supabase connection
+  // Check Supabase connection (v1.1)
   try {
     const supabase = supabaseAdmin()
+    
+    // Check if participant table exists
     const { data, error } = await supabase
-      .from('allowed_domain')
-      .select('count')
-      .limit(1)
-      .single()
+      .from('participant')
+      .select('count(*)', { count: 'exact', head: true })
     
     status.checks.supabase = error ? `Error: ${error.message}` : 'Connected'
     
-    // Check if competition exists
-    const { data: competition } = await supabase
-      .from('competition')
-      .select('name, starts_at')
-      .limit(1)
+    // Check competition config
+    const { data: config } = await supabase
+      .from('competition_config')
+      .select('deadline, is_active')
       .single()
     
-    if (competition) {
+    if (config) {
       status.competition = {
-        name: competition.name,
-        started: competition.starts_at
+        deadline: config.deadline,
+        active: config.is_active
       }
     }
     
-    // Count domains
+    // Count participants
     const { count } = await supabase
-      .from('allowed_domain')
+      .from('participant')
       .select('*', { count: 'exact', head: true })
     
-    status.checks.allowedDomains = count || 0
+    status.checks.participants = count || 0
     
   } catch (error: any) {
     status.checks.supabase = `Error: ${error.message}`
