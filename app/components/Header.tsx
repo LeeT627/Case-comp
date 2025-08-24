@@ -24,13 +24,17 @@ export default function Header() {
   if (!isLoggedIn) return null;
 
   return (
-    <div className="fixed top-0 right-0 p-4 z-50 flex items-center gap-4 bg-white/80 backdrop-blur-sm rounded-bl-lg shadow-sm">
-      {userEmail && (
-        <span className="text-sm text-gray-600">
-          {userEmail}
-        </span>
-      )}
-      <LogoutButton variant="secondary" />
+    <div className="fixed top-4 right-4 z-50">
+      <button
+        onClick={() => {
+          localStorage.removeItem('competition_token');
+          localStorage.removeItem('participant_id');
+          window.location.href = '/join';
+        }}
+        className="text-sm text-gray-500 hover:text-gray-700 underline"
+      >
+        Logout
+      </button>
     </div>
   );
 }

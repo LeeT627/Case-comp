@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MetricsTooltip from '../components/MetricsTooltip';
-import LogoutButton from '../components/LogoutButton';
 
 interface ParticipantData {
   email: string;
@@ -305,14 +304,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center gap-4">
+        <div className="mt-8 flex justify-center">
           <button
             onClick={() => router.push('/analytics')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             View Analytics →
           </button>
-          <LogoutButton variant="secondary" className="px-6 py-2" />
         </div>
       </div>
     </main>
