@@ -125,21 +125,37 @@ export async function POST(req: NextRequest) {
       }
       
       // Count their referrals
-      const referralCountQuery = `
-        SELECT COUNT(*) as count
-        FROM user_referrals ur
-        JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
-        JOIN users u ON ur."referredUserId" = u.id
-        WHERE urc."userId" = $1
-          AND u.email IS NOT NULL
-          AND u."isGuest" IS FALSE
-          AND LOWER(SPLIT_PART(u.email, '@', 2)) = $2
-      `
+      let referralCountQuery
+      let countParams
       
-      const countResult = await gpaiDb.query(referralCountQuery, [
-        gpaiUser.id,
-        emailDomain
-      ])
+      if (isTestAccount) {
+        // For test account, count ALL referrals (not domain-restricted)
+        referralCountQuery = `
+          SELECT COUNT(*) as count
+          FROM user_referrals ur
+          JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
+          JOIN users u ON ur."referredUserId" = u.id
+          WHERE urc."userId" = $1
+            AND u.email IS NOT NULL
+            AND u."isGuest" IS FALSE
+        `
+        countParams = [gpaiUser.id]
+      } else {
+        // For regular accounts, count only same-domain referrals
+        referralCountQuery = `
+          SELECT COUNT(*) as count
+          FROM user_referrals ur
+          JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
+          JOIN users u ON ur."referredUserId" = u.id
+          WHERE urc."userId" = $1
+            AND u.email IS NOT NULL
+            AND u."isGuest" IS FALSE
+            AND LOWER(SPLIT_PART(u.email, '@', 2)) = $2
+        `
+        countParams = [gpaiUser.id, emailDomain]
+      }
+      
+      const countResult = await gpaiDb.query(referralCountQuery, countParams)
       
       const referralCount = parseInt(countResult.rows[0]?.count || '0')
       
