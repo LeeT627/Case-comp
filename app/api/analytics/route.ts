@@ -198,10 +198,12 @@ export async function GET(req: NextRequest) {
               AND cm."createdAt"::date = $2::date
           ),
           solutions_activity AS (
-            SELECT DISTINCT (s.metadata->>'userId')::uuid as user_id
-            FROM solutions s
-            WHERE (s.metadata->>'userId')::uuid = ANY($1::uuid[])
-              AND s."createdAt"::date = $2::date
+            SELECT DISTINCT st."userId" as user_id
+            FROM task_problem_solutions tps
+            JOIN problem_files pf ON pf.id = tps."problemFileId"
+            JOIN solver_tasks st ON st.id = pf."taskId"
+            WHERE st."userId" = ANY($1::uuid[])
+              AND tps."startedAt"::date = $2::date
           )
           SELECT 
             COUNT(DISTINCT CASE WHEN ua."createdAt"::date = $2 THEN ua.id END) as signups,
@@ -227,20 +229,19 @@ export async function GET(req: NextRequest) {
         
         const dayMetrics = await gpaiDb.query(dayMetricsQuery, [userIds, dateStr])
         
-        // Get solver usage for this day
+        // Get solver usage for this day - using correct tables per documentation
         const solverQuery = `
           SELECT 
-            COUNT(DISTINCT s.metadata->>'userId') as solver_users,
+            COUNT(DISTINCT st."userId") as solver_users,
             COUNT(*) as solver_events
-          FROM solutions s
-          WHERE s.metadata->>'userId' = ANY($1::text[])
-            AND s."createdAt"::date = $2
+          FROM task_problem_solutions tps
+          JOIN problem_files pf ON pf.id = tps."problemFileId"
+          JOIN solver_tasks st ON st.id = pf."taskId"
+          WHERE st."userId" = ANY($1::uuid[])
+            AND tps."startedAt"::date = $2
         `
         
-        const solverMetrics = await gpaiDb.query(solverQuery, [
-          userIds.map(id => id.toString()),
-          dateStr
-        ])
+        const solverMetrics = await gpaiDb.query(solverQuery, [userIds, dateStr])
 
         dailyMetrics.push({
           date: dateStr,
@@ -268,10 +269,12 @@ export async function GET(req: NextRequest) {
             AND cm."createdAt" >= NOW() - INTERVAL '1 day'
         ),
         recent_solutions AS (
-          SELECT DISTINCT (s.metadata->>'userId')::uuid as user_id
-          FROM solutions s
-          WHERE (s.metadata->>'userId')::uuid = ANY($1::uuid[])
-            AND s."createdAt" >= NOW() - INTERVAL '1 day'
+          SELECT DISTINCT st."userId" as user_id
+          FROM task_problem_solutions tps
+          JOIN problem_files pf ON pf.id = tps."problemFileId"
+          JOIN solver_tasks st ON st.id = pf."taskId"
+          WHERE st."userId" = ANY($1::uuid[])
+            AND tps."startedAt" >= NOW() - INTERVAL '1 day'
         )
         SELECT 
           COUNT(DISTINCT ub.id) as total_signups,
@@ -295,19 +298,19 @@ export async function GET(req: NextRequest) {
       const currentMetrics = await gpaiDb.query(currentMetricsQuery, [userIds])
       const metrics = currentMetrics.rows[0]
 
-      // Get solver metrics
+      // Get solver metrics - using correct tables per documentation
       const solverMetricsQuery = `
         SELECT 
-          COUNT(DISTINCT s.metadata->>'userId') as unique_users,
+          COUNT(DISTINCT st."userId") as unique_users,
           COUNT(*) as total_events
-        FROM solutions s
-        WHERE s.metadata->>'userId' = ANY($1::text[])
-          AND s."createdAt" >= NOW() - INTERVAL '30 days'
+        FROM task_problem_solutions tps
+        JOIN problem_files pf ON pf.id = tps."problemFileId"
+        JOIN solver_tasks st ON st.id = pf."taskId"
+        WHERE st."userId" = ANY($1::uuid[])
+          AND tps."startedAt" >= NOW() - INTERVAL '30 days'
       `
       
-      const solverMetrics = await gpaiDb.query(solverMetricsQuery, [
-        userIds.map(id => id.toString())
-      ])
+      const solverMetrics = await gpaiDb.query(solverMetricsQuery, [userIds])
 
       // Calculate ratios
       const dau = parseInt(metrics.dau)
