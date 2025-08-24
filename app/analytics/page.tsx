@@ -50,7 +50,7 @@ export default function Analytics() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsData | null>(null);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   const [dataScope, setDataScope] = useState<'referrals' | 'campus' | 'all'>('referrals');
 
   useEffect(() => {
@@ -111,12 +111,13 @@ export default function Analytics() {
         <div className="flex gap-4 mb-6">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d')}
+            onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d' | 'all')}
             className="px-4 py-2 border rounded-lg"
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
+            <option value="all">All Time (From First Signup)</option>
           </select>
           
           <select

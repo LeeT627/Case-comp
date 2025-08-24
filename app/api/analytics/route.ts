@@ -47,9 +47,9 @@ export async function GET(req: NextRequest) {
     await gpaiDb.connect()
 
     try {
-      // Calculate date range
-      const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
-      const startDate = subDays(new Date(), days)
+      // First, get the earliest user creation date based on scope
+      let earliestDateQuery: string
+      let earliestDateParams: any[]
 
       // Get user IDs based on scope
       let userIds: string[] = []
@@ -57,13 +57,27 @@ export async function GET(req: NextRequest) {
       if (scope === 'referrals') {
         // Only users referred by this participant
         const referralUsersQuery = `
-          SELECT ur."referredUserId"
+          SELECT ur."referredUserId", u."createdAt"
           FROM user_referral_codes urc
           JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
+          JOIN users u ON ur."referredUserId" = u.id
           WHERE urc."userId" = $1
+            AND u."isGuest" IS FALSE
+          ORDER BY u."createdAt" ASC
         `
         const referralUsers = await gpaiDb.query(referralUsersQuery, [participant.gpai_user_id])
         userIds = referralUsers.rows.map(r => r.referredUserId)
+        
+        // Get earliest date
+        earliestDateQuery = `
+          SELECT MIN(u."createdAt") as earliest
+          FROM user_referral_codes urc
+          JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
+          JOIN users u ON ur."referredUserId" = u.id
+          WHERE urc."userId" = $1
+            AND u."isGuest" IS FALSE
+        `
+        earliestDateParams = [participant.gpai_user_id]
       } else if (scope === 'campus') {
         // All users from the same campus (same email domain)
         const emailDomain = participant.email.split('@')[1]
@@ -77,6 +91,16 @@ export async function GET(req: NextRequest) {
         `
         const campusUsers = await gpaiDb.query(campusUsersQuery, [emailDomain])
         userIds = campusUsers.rows.map(r => r.id)
+        
+        // Get earliest date
+        earliestDateQuery = `
+          SELECT MIN(u."createdAt") as earliest
+          FROM users u
+          WHERE LOWER(SPLIT_PART(u.email, '@', 2)) = $1
+            AND u."isGuest" IS FALSE
+            AND u.email IS NOT NULL
+        `
+        earliestDateParams = [emailDomain]
       } else {
         // All IIT users
         const allUsersQuery = `
@@ -92,10 +116,23 @@ export async function GET(req: NextRequest) {
         `
         const allUsers = await gpaiDb.query(allUsersQuery)
         userIds = allUsers.rows.map(r => r.id)
+        
+        // Get earliest date
+        earliestDateQuery = `
+          SELECT MIN(u."createdAt") as earliest
+          FROM users u
+          WHERE u.email LIKE ANY(ARRAY['%@iitb.ac.in', '%@iitd.ac.in', '%@iitk.ac.in', '%@iitkgp.ac.in', 
+            '%@iitm.ac.in', '%@iitr.ac.in', '%@iitg.ac.in', '%@iitbbs.ac.in', '%@iitgn.ac.in', 
+            '%@iith.ac.in', '%@iiti.ac.in', '%@iitj.ac.in', '%@iitjm.ac.in', '%@iitp.ac.in', 
+            '%@iitpkd.ac.in', '%@iitrpr.ac.in', '%@iitbh.ac.in', '%@iitdh.ac.in', '%@iitgoa.ac.in', 
+            '%@iitmandi.ac.in', '%@iittp.ac.in', '%@iitdm.ac.in', '%@itbhu.ac.in', '%@iitbhu.ac.in'])
+            AND u."isGuest" IS FALSE
+        `
+        earliestDateParams = []
       }
 
       if (userIds.length === 0) {
-        // Return empty data if no referrals
+        // Return empty data if no users
         return NextResponse.json({
           dailyMetrics: [],
           currentMetrics: {
@@ -111,13 +148,34 @@ export async function GET(req: NextRequest) {
             dauWauStickiness: 0,
             dauMauStickiness: 0
           },
-          campusData: []
+          campusData: [],
+          dateRange: null
         })
+      }
+
+      // Get the earliest date
+      const earliestResult = await gpaiDb.query(earliestDateQuery, earliestDateParams)
+      const earliestDate = earliestResult.rows[0]?.earliest || new Date()
+      
+      // Calculate days from earliest date to now
+      const now = new Date()
+      const daysDiff = Math.ceil((now.getTime() - new Date(earliestDate).getTime()) / (1000 * 60 * 60 * 24))
+      
+      // Determine how many days to show
+      let daysToShow: number
+      if (range === 'all') {
+        daysToShow = Math.min(daysDiff, 365) // Show all data, cap at 1 year
+      } else if (range === '7d') {
+        daysToShow = Math.min(7, daysDiff)
+      } else if (range === '30d') {
+        daysToShow = Math.min(30, daysDiff)
+      } else {
+        daysToShow = Math.min(90, daysDiff)
       }
 
       // Get daily metrics
       const dailyMetrics = []
-      for (let i = 0; i < days; i++) {
+      for (let i = 0; i < daysToShow; i++) {
         const date = subDays(new Date(), i)
         const dateStr = format(date, 'yyyy-MM-dd')
         
@@ -267,7 +325,13 @@ export async function GET(req: NextRequest) {
           dauWauStickiness,
           dauMauStickiness
         },
-        campusData
+        campusData,
+        dateRange: {
+          earliest: earliestDate,
+          latest: new Date(),
+          daysShown: daysToShow,
+          totalDays: daysDiff
+        }
       })
 
     } finally {
