@@ -3,6 +3,7 @@ import { Client as PGClient } from 'pg'
 import { supabaseAdmin } from '@/lib/supabase'
 import jwt from 'jsonwebtoken'
 
+// v2: Fixed test account to use real IIT Delhi campus_id
 export async function POST(req: NextRequest) {
   try {
     const { email, referralCodeSuffix } = await req.json()
