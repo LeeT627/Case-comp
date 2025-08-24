@@ -152,12 +152,27 @@ export default function Dashboard() {
             </p>
           </div>
           {participant?.email === 'himanshuraj6771@gmail.com' && (
-            <button
-              onClick={populateTestData}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-            >
-              Populate Test Data
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={populateTestData}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+              >
+                Populate Test Data
+              </button>
+              <button
+                onClick={async () => {
+                  const response = await fetch('/api/test/sync-referrals');
+                  if (response.ok) {
+                    const data = await response.json();
+                    alert(`Synced ${data.total_referrals} referrals from GPai!`);
+                    window.location.reload();
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+              >
+                Sync Real Data
+              </button>
+            </div>
           )}
         </div>
 
