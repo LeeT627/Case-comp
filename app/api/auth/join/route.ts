@@ -26,8 +26,14 @@ export async function POST(req: NextRequest) {
     let allowedDomain
     
     if (isTestAccount) {
-      // Use IIT Delhi as the campus for test account
-      allowedDomain = {
+      // Use IIT Delhi as the campus for test account  
+      const { data: iitDelhi } = await supabase
+        .from('allowed_domain')
+        .select('campus_id, campus_name')
+        .eq('domain', 'iitd.ac.in')
+        .single()
+      
+      allowedDomain = iitDelhi || {
         campus_id: 'test-campus-id',
         campus_name: 'Test Campus (IIT Delhi)'
       }
