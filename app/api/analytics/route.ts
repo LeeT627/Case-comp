@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams
     const range = searchParams.get('range') || '30d'
-    const filter = searchParams.get('filter') || 'campus'
+    const scope = searchParams.get('scope') || 'referrals'
 
     // Get participant
     const supabase = supabaseAdmin()
@@ -51,15 +51,48 @@ export async function GET(req: NextRequest) {
       const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
       const startDate = subDays(new Date(), days)
 
-      // Get all referral user IDs for this participant
-      const referralUsersQuery = `
-        SELECT ur."referredUserId"
-        FROM user_referral_codes urc
-        JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
-        WHERE urc."userId" = $1
-      `
-      const referralUsers = await gpaiDb.query(referralUsersQuery, [participant.gpai_user_id])
-      const userIds = referralUsers.rows.map(r => r.referredUserId)
+      // Get user IDs based on scope
+      let userIds: string[] = []
+      
+      if (scope === 'referrals') {
+        // Only users referred by this participant
+        const referralUsersQuery = `
+          SELECT ur."referredUserId"
+          FROM user_referral_codes urc
+          JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
+          WHERE urc."userId" = $1
+        `
+        const referralUsers = await gpaiDb.query(referralUsersQuery, [participant.gpai_user_id])
+        userIds = referralUsers.rows.map(r => r.referredUserId)
+      } else if (scope === 'campus') {
+        // All users from the same campus (same email domain)
+        const emailDomain = participant.email.split('@')[1]
+        const campusUsersQuery = `
+          SELECT u.id
+          FROM users u
+          WHERE LOWER(SPLIT_PART(u.email, '@', 2)) = $1
+            AND u."isGuest" IS FALSE
+            AND u.email IS NOT NULL
+          LIMIT 10000
+        `
+        const campusUsers = await gpaiDb.query(campusUsersQuery, [emailDomain])
+        userIds = campusUsers.rows.map(r => r.id)
+      } else {
+        // All IIT users
+        const allUsersQuery = `
+          SELECT u.id
+          FROM users u
+          WHERE u.email LIKE ANY(ARRAY['%@iitb.ac.in', '%@iitd.ac.in', '%@iitk.ac.in', '%@iitkgp.ac.in', 
+            '%@iitm.ac.in', '%@iitr.ac.in', '%@iitg.ac.in', '%@iitbbs.ac.in', '%@iitgn.ac.in', 
+            '%@iith.ac.in', '%@iiti.ac.in', '%@iitj.ac.in', '%@iitjm.ac.in', '%@iitp.ac.in', 
+            '%@iitpkd.ac.in', '%@iitrpr.ac.in', '%@iitbh.ac.in', '%@iitdh.ac.in', '%@iitgoa.ac.in', 
+            '%@iitmandi.ac.in', '%@iittp.ac.in', '%@iitdm.ac.in', '%@itbhu.ac.in', '%@iitbhu.ac.in'])
+            AND u."isGuest" IS FALSE
+          LIMIT 10000
+        `
+        const allUsers = await gpaiDb.query(allUsersQuery)
+        userIds = allUsers.rows.map(r => r.id)
+      }
 
       if (userIds.length === 0) {
         // Return empty data if no referrals
@@ -177,9 +210,9 @@ export async function GET(req: NextRequest) {
         ? Math.round((parseInt(metrics.d30_retained) / parseInt(metrics.d30_eligible)) * 100) 
         : 0
 
-      // Get campus data
+      // Get leaderboard data based on scope
       let campusData = []
-      if (filter === 'campus') {
+      if (scope === 'campus' || scope === 'referrals') {
         const { data: campusParticipants } = await supabase
           .from('participant')
           .select('*')

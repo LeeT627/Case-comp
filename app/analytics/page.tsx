@@ -51,7 +51,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
-  const [campusFilter, setCampusFilter] = useState<'all' | 'campus'>('campus');
+  const [dataScope, setDataScope] = useState<'referrals' | 'campus' | 'all'>('referrals');
 
   useEffect(() => {
     const token = localStorage.getItem('competition_token');
@@ -63,12 +63,12 @@ export default function Analytics() {
     fetchAnalytics();
     const interval = setInterval(fetchAnalytics, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [timeRange, campusFilter]);
+  }, [timeRange, dataScope]);
 
   const fetchAnalytics = async () => {
     try {
       const token = localStorage.getItem('competition_token');
-      const response = await fetch(`/api/analytics?range=${timeRange}&filter=${campusFilter}`, {
+      const response = await fetch(`/api/analytics?range=${timeRange}&scope=${dataScope}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -100,7 +100,11 @@ export default function Analytics() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Analytics Dashboard</h1>
-          <p className="text-gray-600">Comprehensive metrics and insights</p>
+          <p className="text-gray-600">
+            {dataScope === 'referrals' && 'Metrics for users you referred'}
+            {dataScope === 'campus' && `All users from your campus`}
+            {dataScope === 'all' && 'All IIT users across all campuses'}
+          </p>
         </div>
 
         {/* Controls */}
@@ -116,12 +120,13 @@ export default function Analytics() {
           </select>
           
           <select
-            value={campusFilter}
-            onChange={(e) => setCampusFilter(e.target.value as 'all' | 'campus')}
-            className="px-4 py-2 border rounded-lg"
+            value={dataScope}
+            onChange={(e) => setDataScope(e.target.value as 'referrals' | 'campus' | 'all')}
+            className="px-4 py-2 border rounded-lg bg-white"
           >
-            <option value="campus">My Campus Only</option>
-            <option value="all">All Campuses</option>
+            <option value="referrals">📊 My Referrals Only</option>
+            <option value="campus">🏫 My Campus (All Students)</option>
+            <option value="all">🌍 All Campuses</option>
           </select>
 
           <button
