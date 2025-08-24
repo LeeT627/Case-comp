@@ -147,19 +147,13 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center">
-                  Your Referrals
-                  <MetricsTooltip 
-                    title="Your Referrals"
-                    description="Total users who signed up with your referral code. Only counts real accounts (non-guests)."
-                  />
-                </p>
-                <p className="text-3xl font-bold">{metrics?.total_signups || 0}</p>
-                <p className="text-xs text-green-600 mt-1">+{participant?.eligible_referrals_total || 0} total</p>
+                <p className="text-sm text-gray-600 mb-1">Total Referrals</p>
+                <p className="text-4xl font-bold">{participant?.eligible_referrals_total || 0}</p>
+                <p className="text-xs text-green-600 mt-1">Verified signups</p>
               </div>
               <span className="text-2xl">👥</span>
             </div>
@@ -168,80 +162,26 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center">
-                  Activation Rate
-                  <MetricsTooltip 
-                    title="D1 Activation Rate"
-                    description="Percentage of referrals who became active within 24 hours. Shows the quality and engagement of your referrals."
-                    formula="(Active in 24h / Total) × 100"
-                  />
-                </p>
-                <p className="text-3xl font-bold">
-                  {metrics?.total_signups ? 
-                    `${Math.round((metrics.d1_activated / metrics.total_signups) * 100)}%` : 
-                    '0%'
-                  }
-                </p>
-                <p className="text-xs text-gray-500 mt-1">{metrics?.d1_activated || 0} activated</p>
+                <p className="text-sm text-gray-600 mb-1">Campus Rank</p>
+                <p className="text-4xl font-bold">#{metrics?.campus_rank || 1}</p>
+                <p className="text-xs text-gray-500 mt-1">Within {participant?.campus_name}</p>
               </div>
-              <span className="text-2xl">🚀</span>
+              <span className="text-2xl">🏆</span>
             </div>
           </div>
           
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center">
-                  Retention Rate
-                  <MetricsTooltip 
-                    title="D7 Retention Rate"
-                    description="Percentage of users still active 7 days after signup. Higher retention = better quality referrals."
-                    formula="(Active after 7 days / Eligible) × 100"
-                  />
-                </p>
-                <p className="text-3xl font-bold">
-                  {metrics?.total_signups ? 
-                    `${Math.round((metrics.d7_retained / metrics.total_signups) * 100)}%` : 
-                    '0%'
-                  }
-                </p>
-                <p className="text-xs text-gray-500 mt-1">{metrics?.d7_retained || 0} retained</p>
+                <p className="text-sm text-gray-600 mb-1">Overall Rank</p>
+                <p className="text-4xl font-bold">#{metrics?.overall_rank || 1}</p>
+                <p className="text-xs text-gray-500 mt-1">Across all IITs</p>
               </div>
-              <span className="text-2xl">📊</span>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center">
-                  Active Today
-                  <MetricsTooltip 
-                    title="Daily Active Users (DAU)"
-                    description="Number of your referrals who used GPai in the last 24 hours. Shows ongoing engagement."
-                  />
-                </p>
-                <p className="text-3xl font-bold">{metrics?.referred_dau || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">from your referrals</p>
-              </div>
-              <span className="text-2xl">🔥</span>
+              <span className="text-2xl">🌟</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
-            <p className="text-sm opacity-90 mb-1">Campus Rank</p>
-            <p className="text-4xl font-bold">#{metrics?.campus_rank || '-'}</p>
-            <p className="text-sm opacity-90 mt-2">Within {participant?.campus_name}</p>
-          </div>
-          
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
-            <p className="text-sm opacity-90 mb-1">Overall Rank</p>
-            <p className="text-4xl font-bold">#{metrics?.overall_rank || '-'}</p>
-            <p className="text-sm opacity-90 mt-2">Across all IITs</p>
-          </div>
-        </div>
 
         <div className="mb-8">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
