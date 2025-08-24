@@ -90,9 +90,8 @@ export async function POST(req: NextRequest) {
           email: email.toLowerCase(),
           password_hash: hashedPassword,
           // V1.1: No campus requirement, no referral code needed
-          campus_id: 'default',
-          campus_name: 'Open Registration',
-          unlocked_at: new Date().toISOString() // Automatically unlocked
+          campus_id: 'open',
+          campus_name: 'Open Registration'
         })
         .select()
         .single()
