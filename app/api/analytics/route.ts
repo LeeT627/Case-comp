@@ -190,14 +190,8 @@ export async function GET(req: NextRequest) {
             FROM users u
             WHERE u.id = ANY($1::uuid[])
           ),
-          chat_activity AS (
-            SELECT DISTINCT c."userId" as user_id
-            FROM chats c
-            JOIN chat_messages cm ON c.id = cm."chatId"
-            WHERE c."userId" = ANY($1::uuid[])
-              AND cm."createdAt"::date = $2::date
-          ),
           solutions_activity AS (
+            -- Track when users START solving problems (not just complete)
             SELECT DISTINCT st."userId" as user_id
             FROM task_problem_solutions tps
             JOIN problem_files pf ON pf.id = tps."problemFileId"
@@ -209,8 +203,7 @@ export async function GET(req: NextRequest) {
             COUNT(DISTINCT CASE WHEN ua."createdAt"::date = $2 THEN ua.id END) as signups,
             COUNT(DISTINCT CASE 
               WHEN ua."updatedAt"::date = $2 THEN ua.id  -- Account activity (signup/update)
-              WHEN ca.user_id IS NOT NULL THEN ua.id     -- Chat activity
-              WHEN sa.user_id IS NOT NULL THEN ua.id     -- Solutions activity
+              WHEN sa.user_id IS NOT NULL THEN ua.id     -- Solver activity (started solving)
             END) as dau,
             COUNT(DISTINCT CASE 
               WHEN ua."createdAt" <= $2::date 
@@ -223,7 +216,6 @@ export async function GET(req: NextRequest) {
               THEN ua.id 
             END) as mau
           FROM user_activity ua
-          LEFT JOIN chat_activity ca ON ua.id = ca.user_id
           LEFT JOIN solutions_activity sa ON ua.id = sa.user_id
         `
         
@@ -261,13 +253,6 @@ export async function GET(req: NextRequest) {
           FROM users u
           WHERE u.id = ANY($1::uuid[])
         ),
-        recent_chat AS (
-          SELECT DISTINCT c."userId" as user_id
-          FROM chats c
-          JOIN chat_messages cm ON c.id = cm."chatId"
-          WHERE c."userId" = ANY($1::uuid[])
-            AND cm."createdAt" >= NOW() - INTERVAL '1 day'
-        ),
         recent_solutions AS (
           SELECT DISTINCT st."userId" as user_id
           FROM task_problem_solutions tps
@@ -280,8 +265,7 @@ export async function GET(req: NextRequest) {
           COUNT(DISTINCT ub.id) as total_signups,
           COUNT(DISTINCT CASE 
             WHEN ub."updatedAt" >= NOW() - INTERVAL '1 day' THEN ub.id 
-            WHEN rc.user_id IS NOT NULL THEN ub.id  -- Chat activity
-            WHEN rs.user_id IS NOT NULL THEN ub.id  -- Solutions activity
+            WHEN rs.user_id IS NOT NULL THEN ub.id  -- Solver activity
           END) as dau,
           COUNT(DISTINCT CASE WHEN ub."createdAt" >= NOW() - INTERVAL '7 days' THEN ub.id END) as wau,
           COUNT(DISTINCT CASE WHEN ub."createdAt" >= NOW() - INTERVAL '30 days' THEN ub.id END) as mau,
@@ -291,7 +275,6 @@ export async function GET(req: NextRequest) {
           COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '7 days' THEN ub.id END) as d7_eligible,
           COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '30 days' THEN ub.id END) as d30_eligible
         FROM user_base ub
-        LEFT JOIN recent_chat rc ON ub.id = rc.user_id
         LEFT JOIN recent_solutions rs ON ub.id = rs.user_id
       `
       
