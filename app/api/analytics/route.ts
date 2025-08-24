@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       let userIds: string[] = []
       
       if (scope === 'referrals') {
-        // Only users referred by this participant
+        // Include BOTH the participant themselves AND users they referred
         const referralUsersQuery = `
           SELECT ur."referredUserId", u."createdAt"
           FROM user_referral_codes urc
@@ -66,16 +66,23 @@ export async function GET(req: NextRequest) {
           ORDER BY u."createdAt" ASC
         `
         const referralUsers = await gpaiDb.query(referralUsersQuery, [participant.gpai_user_id])
-        userIds = referralUsers.rows.map(r => r.referredUserId)
+        // Add the referrer themselves to the list
+        userIds = [participant.gpai_user_id, ...referralUsers.rows.map(r => r.referredUserId)]
         
-        // Get earliest date
+        // Get earliest date (including the referrer themselves)
         earliestDateQuery = `
-          SELECT MIN(u."createdAt") as earliest
-          FROM user_referral_codes urc
-          JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
-          JOIN users u ON ur."referredUserId" = u.id
-          WHERE urc."userId" = $1
-            AND u."isGuest" IS FALSE
+          SELECT MIN(earliest) as earliest FROM (
+            SELECT u."createdAt" as earliest
+            FROM users u
+            WHERE u.id = $1
+            UNION ALL
+            SELECT u."createdAt" as earliest
+            FROM user_referral_codes urc
+            JOIN user_referrals ur ON urc."referralCode" = ur."referralCode"
+            JOIN users u ON ur."referredUserId" = u.id
+            WHERE urc."userId" = $1
+              AND u."isGuest" IS FALSE
+          ) combined
         `
         earliestDateParams = [participant.gpai_user_id]
       } else if (scope === 'campus') {
