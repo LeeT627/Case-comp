@@ -180,14 +180,42 @@ export async function GET(req: NextRequest) {
         const dateStr = format(date, 'yyyy-MM-dd')
         
         // Calculate metrics for this day
+        // Since we don't have real activity tracking, we'll use:
+        // - Signups: Users created on this day
+        // - DAU: Users whose updatedAt is on this day (signup activity) OR solutions activity
+        // - WAU/MAU: Cumulative users who signed up within the window
         const dayMetricsQuery = `
+          WITH user_activity AS (
+            SELECT DISTINCT u.id, u."createdAt", u."updatedAt"
+            FROM users u
+            WHERE u.id = ANY($1::uuid[])
+          ),
+          solutions_activity AS (
+            SELECT DISTINCT 
+              (s.metadata->>'userId')::uuid as user_id,
+              s."createdAt"::date as activity_date
+            FROM solutions s
+            WHERE (s.metadata->>'userId')::uuid = ANY($1::uuid[])
+              AND s."createdAt"::date = $2::date
+          )
           SELECT 
-            COUNT(DISTINCT CASE WHEN u."createdAt"::date = $2 THEN u.id END) as signups,
-            COUNT(DISTINCT CASE WHEN u."updatedAt"::date = $2 THEN u.id END) as dau,
-            COUNT(DISTINCT CASE WHEN u."updatedAt" >= $2::date - INTERVAL '7 days' THEN u.id END) as wau,
-            COUNT(DISTINCT CASE WHEN u."updatedAt" >= $2::date - INTERVAL '30 days' THEN u.id END) as mau
-          FROM users u
-          WHERE u.id = ANY($1::uuid[])
+            COUNT(DISTINCT CASE WHEN ua."createdAt"::date = $2 THEN ua.id END) as signups,
+            COUNT(DISTINCT CASE 
+              WHEN ua."updatedAt"::date = $2 THEN ua.id  -- Account activity (signup/update)
+              WHEN sa.user_id IS NOT NULL THEN ua.id      -- Solutions activity
+            END) as dau,
+            COUNT(DISTINCT CASE 
+              WHEN ua."createdAt" <= $2::date 
+              AND ua."createdAt" >= $2::date - INTERVAL '7 days' 
+              THEN ua.id 
+            END) as wau,
+            COUNT(DISTINCT CASE 
+              WHEN ua."createdAt" <= $2::date 
+              AND ua."createdAt" >= $2::date - INTERVAL '30 days' 
+              THEN ua.id 
+            END) as mau
+          FROM user_activity ua
+          LEFT JOIN solutions_activity sa ON ua.id = sa.user_id
         `
         
         const dayMetrics = await gpaiDb.query(dayMetricsQuery, [userIds, dateStr])
@@ -220,18 +248,32 @@ export async function GET(req: NextRequest) {
 
       // Calculate current metrics
       const currentMetricsQuery = `
+        WITH user_base AS (
+          SELECT DISTINCT u.id, u."createdAt", u."updatedAt"
+          FROM users u
+          WHERE u.id = ANY($1::uuid[])
+        ),
+        recent_solutions AS (
+          SELECT DISTINCT (s.metadata->>'userId')::uuid as user_id
+          FROM solutions s
+          WHERE (s.metadata->>'userId')::uuid = ANY($1::uuid[])
+            AND s."createdAt" >= NOW() - INTERVAL '1 day'
+        )
         SELECT 
-          COUNT(DISTINCT u.id) as total_signups,
-          COUNT(DISTINCT CASE WHEN u."updatedAt" >= NOW() - INTERVAL '1 day' THEN u.id END) as dau,
-          COUNT(DISTINCT CASE WHEN u."updatedAt" >= NOW() - INTERVAL '7 days' THEN u.id END) as wau,
-          COUNT(DISTINCT CASE WHEN u."updatedAt" >= NOW() - INTERVAL '30 days' THEN u.id END) as mau,
-          COUNT(DISTINCT CASE WHEN u."updatedAt" >= u."createdAt" + INTERVAL '1 day' THEN u.id END) as d1_retained,
-          COUNT(DISTINCT CASE WHEN u."createdAt" <= NOW() - INTERVAL '7 days' AND u."updatedAt" >= u."createdAt" + INTERVAL '7 days' THEN u.id END) as d7_retained,
-          COUNT(DISTINCT CASE WHEN u."createdAt" <= NOW() - INTERVAL '30 days' AND u."updatedAt" >= u."createdAt" + INTERVAL '30 days' THEN u.id END) as d30_retained,
-          COUNT(DISTINCT CASE WHEN u."createdAt" <= NOW() - INTERVAL '7 days' THEN u.id END) as d7_eligible,
-          COUNT(DISTINCT CASE WHEN u."createdAt" <= NOW() - INTERVAL '30 days' THEN u.id END) as d30_eligible
-        FROM users u
-        WHERE u.id = ANY($1::uuid[])
+          COUNT(DISTINCT ub.id) as total_signups,
+          COUNT(DISTINCT CASE 
+            WHEN ub."updatedAt" >= NOW() - INTERVAL '1 day' THEN ub.id 
+            WHEN rs.user_id IS NOT NULL THEN ub.id
+          END) as dau,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" >= NOW() - INTERVAL '7 days' THEN ub.id END) as wau,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" >= NOW() - INTERVAL '30 days' THEN ub.id END) as mau,
+          COUNT(DISTINCT CASE WHEN ub."updatedAt" >= ub."createdAt" + INTERVAL '1 day' THEN ub.id END) as d1_retained,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '7 days' AND ub."updatedAt" >= ub."createdAt" + INTERVAL '7 days' THEN ub.id END) as d7_retained,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '30 days' AND ub."updatedAt" >= ub."createdAt" + INTERVAL '30 days' THEN ub.id END) as d30_retained,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '7 days' THEN ub.id END) as d7_eligible,
+          COUNT(DISTINCT CASE WHEN ub."createdAt" <= NOW() - INTERVAL '30 days' THEN ub.id END) as d30_eligible
+        FROM user_base ub
+        LEFT JOIN recent_solutions rs ON ub.id = rs.user_id
       `
       
       const currentMetrics = await gpaiDb.query(currentMetricsQuery, [userIds])
