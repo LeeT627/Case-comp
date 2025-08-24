@@ -77,8 +77,9 @@ export async function POST(req: NextRequest) {
       const userResult = await gpaiDb.query(userQuery, [emailLower])
       
       if (userResult.rows.length === 0) {
+        console.log(`User not found in GPai database: ${emailLower}`)
         return NextResponse.json(
-          { error: 'No GPai account found with this email. Please sign up at gpai.app first.' },
+          { error: `No GPai account found with ${emailLower}. You must first create an account at gpai.app using this exact email address, then return here to join the competition.` },
           { status: 404 }
         )
       }
