@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import MetricsTooltip from '../components/MetricsTooltip';
 
 interface ParticipantData {
   email: string;
@@ -150,7 +151,13 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Your Referrals</p>
+                <p className="text-sm text-gray-600 mb-1 flex items-center">
+                  Your Referrals
+                  <MetricsTooltip 
+                    title="Your Referrals"
+                    description="Total users who signed up with your referral code. Only counts real accounts (non-guests)."
+                  />
+                </p>
                 <p className="text-3xl font-bold">{metrics?.total_signups || 0}</p>
                 <p className="text-xs text-green-600 mt-1">+{participant?.eligible_referrals_total || 0} total</p>
               </div>
@@ -161,7 +168,14 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Activation Rate</p>
+                <p className="text-sm text-gray-600 mb-1 flex items-center">
+                  Activation Rate
+                  <MetricsTooltip 
+                    title="D1 Activation Rate"
+                    description="Percentage of referrals who became active within 24 hours. Shows the quality and engagement of your referrals."
+                    formula="(Active in 24h / Total) × 100"
+                  />
+                </p>
                 <p className="text-3xl font-bold">
                   {metrics?.total_signups ? 
                     `${Math.round((metrics.d1_activated / metrics.total_signups) * 100)}%` : 
@@ -177,7 +191,14 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Retention Rate</p>
+                <p className="text-sm text-gray-600 mb-1 flex items-center">
+                  Retention Rate
+                  <MetricsTooltip 
+                    title="D7 Retention Rate"
+                    description="Percentage of users still active 7 days after signup. Higher retention = better quality referrals."
+                    formula="(Active after 7 days / Eligible) × 100"
+                  />
+                </p>
                 <p className="text-3xl font-bold">
                   {metrics?.total_signups ? 
                     `${Math.round((metrics.d7_retained / metrics.total_signups) * 100)}%` : 
@@ -193,7 +214,13 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Active Today</p>
+                <p className="text-sm text-gray-600 mb-1 flex items-center">
+                  Active Today
+                  <MetricsTooltip 
+                    title="Daily Active Users (DAU)"
+                    description="Number of your referrals who used GPai in the last 24 hours. Shows ongoing engagement."
+                  />
+                </p>
                 <p className="text-3xl font-bold">{metrics?.referred_dau || 0}</p>
                 <p className="text-xs text-gray-500 mt-1">from your referrals</p>
               </div>
