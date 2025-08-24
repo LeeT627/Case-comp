@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MetricsTooltip from '../components/MetricsTooltip';
+import LogoutButton from '../components/LogoutButton';
 
 interface ParticipantData {
   email: string;
@@ -311,16 +312,7 @@ export default function Dashboard() {
           >
             View Analytics →
           </button>
-          <button
-            onClick={() => {
-              localStorage.removeItem('competition_token');
-              localStorage.removeItem('participant_id');
-              router.push('/join');
-            }}
-            className="px-6 py-2 text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-          >
-            Sign out
-          </button>
+          <LogoutButton variant="secondary" className="px-6 py-2" />
         </div>
       </div>
     </main>
