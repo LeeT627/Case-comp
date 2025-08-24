@@ -125,14 +125,18 @@ export async function POST(req: NextRequest) {
         )
       }
       
-      // Count their referrals
+      // Count their referrals AND get metrics in one go
       let referralCountQuery
       let countParams
       
       if (isTestAccount) {
-        // For test account, count ALL referrals (not domain-restricted)
+        // For test account, count ALL referrals with metrics
         referralCountQuery = `
-          SELECT COUNT(*) as count
+          SELECT 
+            COUNT(*) as count,
+            COUNT(CASE WHEN u."updatedAt" >= u."createdAt" + INTERVAL '1 hour' THEN 1 END) as d1_activated,
+            COUNT(CASE WHEN u."createdAt" <= NOW() - INTERVAL '7 days' AND u."updatedAt" >= NOW() - INTERVAL '30 days' THEN 1 END) as d7_retained,
+            COUNT(CASE WHEN u."updatedAt" >= NOW() - INTERVAL '1 day' THEN 1 END) as dau
           FROM user_referrals ur
           JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
           JOIN users u ON ur."referredUserId" = u.id
@@ -142,9 +146,13 @@ export async function POST(req: NextRequest) {
         `
         countParams = [gpaiUser.id]
       } else {
-        // For regular accounts, count only same-domain referrals
+        // For regular accounts, count only same-domain referrals with metrics
         referralCountQuery = `
-          SELECT COUNT(*) as count
+          SELECT 
+            COUNT(*) as count,
+            COUNT(CASE WHEN u."updatedAt" >= u."createdAt" + INTERVAL '1 hour' THEN 1 END) as d1_activated,
+            COUNT(CASE WHEN u."createdAt" <= NOW() - INTERVAL '7 days' AND u."updatedAt" >= NOW() - INTERVAL '30 days' THEN 1 END) as d7_retained,
+            COUNT(CASE WHEN u."updatedAt" >= NOW() - INTERVAL '1 day' THEN 1 END) as dau
           FROM user_referrals ur
           JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
           JOIN users u ON ur."referredUserId" = u.id
@@ -157,8 +165,8 @@ export async function POST(req: NextRequest) {
       }
       
       const countResult = await gpaiDb.query(referralCountQuery, countParams)
-      
-      const referralCount = parseInt(countResult.rows[0]?.count || '0')
+      const stats = countResult.rows[0]
+      const referralCount = parseInt(stats?.count || '0')
       
       // Update participant with referral count
       await supabase
@@ -168,6 +176,21 @@ export async function POST(req: NextRequest) {
           unlocked_at: referralCount >= 5 ? new Date().toISOString() : null
         })
         .eq('participant_id', participant.participant_id)
+      
+      // Store metrics for this participant
+      const today = new Date().toISOString().split('T')[0]
+      await supabase
+        .from('rt_participant_day')
+        .upsert({
+          date: today,
+          participant_id: participant.participant_id,
+          signups: referralCount,
+          d1_activated: parseInt(stats?.d1_activated || '0'),
+          d7_retained: parseInt(stats?.d7_retained || '0'),
+          referred_dau: parseInt(stats?.dau || '0')
+        }, {
+          onConflict: 'date,participant_id'
+        })
       
       // Generate JWT token
       const token = jwt.sign(
