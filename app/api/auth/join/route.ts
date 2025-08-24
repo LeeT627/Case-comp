@@ -112,8 +112,14 @@ export async function POST(req: NextRequest) {
       
       if (error) {
         console.error('Participant creation error:', error)
+        console.error('Attempted data:', {
+          gpai_user_id: gpaiUser.id,
+          email: gpaiUser.email,
+          campus_id: allowedDomain.campus_id,
+          referral_code: gpaiUser.referralCode
+        })
         return NextResponse.json(
-          { error: 'Failed to create participant record' },
+          { error: `Failed to create participant record: ${error.message}` },
           { status: 500 }
         )
       }
