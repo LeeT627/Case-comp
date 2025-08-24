@@ -24,7 +24,7 @@ export default function Header() {
   if (!isLoggedIn) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="w-full flex justify-end p-4">
       <button
         onClick={() => {
           localStorage.removeItem('competition_token');
