@@ -30,6 +30,13 @@ export default function Dashboard() {
   useEffect(() => {
     checkAuth();
     fetchMetrics();
+    
+    // Auto-refresh metrics every minute
+    const interval = setInterval(() => {
+      fetchMetrics();
+    }, 60000); // 60 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   const checkAuth = async () => {
@@ -68,7 +75,8 @@ export default function Dashboard() {
   const fetchMetrics = async () => {
     const token = localStorage.getItem('competition_token');
     try {
-      const response = await fetch('/api/metrics/my', {
+      // Use live endpoint that pulls from GPai directly
+      const response = await fetch('/api/metrics/live', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -144,36 +152,11 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Competition Dashboard</h1>
-            <p className="text-gray-600">
-              {participant?.campus_name} • {participant?.email}
-            </p>
-          </div>
-          {participant?.email === 'himanshuraj6771@gmail.com' && (
-            <div className="flex gap-2">
-              <button
-                onClick={populateTestData}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-              >
-                Populate Test Data
-              </button>
-              <button
-                onClick={async () => {
-                  const response = await fetch('/api/test/sync-referrals');
-                  if (response.ok) {
-                    const data = await response.json();
-                    alert(`Synced ${data.total_referrals} referrals from GPai!`);
-                    window.location.reload();
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
-              >
-                Sync Real Data
-              </button>
-            </div>
-          )}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Competition Dashboard</h1>
+          <p className="text-gray-600">
+            {participant?.campus_name} • {participant?.email}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
