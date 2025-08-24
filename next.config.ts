@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Force cache invalidation on deployment
+  generateBuildId: async () => {
+    return Date.now().toString();
+  },
 };
 
 export default nextConfig;
