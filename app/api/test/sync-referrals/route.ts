@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
       const referralQuery = `
         SELECT 
           COUNT(*) as total_count,
-          COUNT(CASE WHEN u."createdAt" >= NOW() - INTERVAL '24 hours' THEN 1 END) as d1_count,
-          COUNT(CASE WHEN u."createdAt" <= NOW() - INTERVAL '7 days' THEN 1 END) as d7_eligible,
-          COUNT(CASE WHEN u."lastActiveAt" >= NOW() - INTERVAL '1 day' THEN 1 END) as dau_count
+          COUNT(CASE WHEN u."createdAt" >= NOW() - INTERVAL '24 hours' THEN 1 END) as new_today,
+          COUNT(CASE WHEN u."createdAt" >= NOW() - INTERVAL '7 days' THEN 1 END) as new_7d,
+          COUNT(CASE WHEN u."createdAt" >= NOW() - INTERVAL '30 days' THEN 1 END) as new_30d,
+          COUNT(CASE WHEN u."updatedAt" >= NOW() - INTERVAL '1 day' THEN 1 END) as active_today
         FROM user_referrals ur
         JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
         JOIN users u ON ur."referredUserId" = u.id
@@ -48,34 +49,30 @@ export async function GET(req: NextRequest) {
       const referralResult = await gpaiDb.query(referralQuery, [gpaiUser.id])
       const stats = referralResult.rows[0]
       
-      // Get detailed list of referrals for analysis
-      const detailQuery = `
+      // Since we don't have detailed activity tracking, use simplified metrics
+      // D1 activated: users who updated their profile within 24h of creation
+      // D7 retained: users created more than 7 days ago who are still active
+      const metricsQuery = `
         SELECT 
-          u.email,
-          u."createdAt",
-          u."lastActiveAt",
-          CASE WHEN u."lastActiveAt" >= u."createdAt" + INTERVAL '24 hours' THEN true ELSE false END as d1_activated,
-          CASE WHEN u."lastActiveAt" >= u."createdAt" + INTERVAL '7 days' THEN true ELSE false END as d7_retained
+          COUNT(CASE 
+            WHEN u."updatedAt" >= u."createdAt" + INTERVAL '1 hour' 
+            THEN 1 
+          END) as d1_activated,
+          COUNT(CASE 
+            WHEN u."createdAt" <= NOW() - INTERVAL '7 days' 
+            AND u."updatedAt" >= NOW() - INTERVAL '30 days'
+            THEN 1 
+          END) as d7_retained
         FROM user_referrals ur
         JOIN user_referral_codes urc ON ur."referralCode" = urc."referralCode"
         JOIN users u ON ur."referredUserId" = u.id
         WHERE urc."userId" = $1
           AND u.email IS NOT NULL
           AND u."isGuest" IS FALSE
-        ORDER BY u."createdAt" DESC
-        LIMIT 100
       `
       
-      const detailResult = await gpaiDb.query(detailQuery, [gpaiUser.id])
-      
-      // Calculate activation metrics
-      let d1_activated = 0
-      let d7_retained = 0
-      
-      detailResult.rows.forEach(user => {
-        if (user.d1_activated) d1_activated++
-        if (user.d7_retained) d7_retained++
-      })
+      const metricsResult = await gpaiDb.query(metricsQuery, [gpaiUser.id])
+      const metrics = metricsResult.rows[0]
       
       // Update participant in Supabase
       const supabase = supabaseAdmin()
@@ -106,9 +103,9 @@ export async function GET(req: NextRequest) {
             date: today,
             participant_id: participant.participant_id,
             signups: parseInt(stats.total_count),
-            d1_activated: d1_activated,
-            d7_retained: d7_retained,
-            referred_dau: parseInt(stats.dau_count)
+            d1_activated: parseInt(metrics.d1_activated),
+            d7_retained: parseInt(metrics.d7_retained),
+            referred_dau: parseInt(stats.active_today)
           }, {
             onConflict: 'date,participant_id'
           })
@@ -118,10 +115,12 @@ export async function GET(req: NextRequest) {
         email,
         referral_code: gpaiUser.referralCode,
         total_referrals: parseInt(stats.total_count),
-        d1_activated,
-        d7_retained,
-        referred_dau: parseInt(stats.dau_count),
-        sample_referrals: detailResult.rows.slice(0, 10)
+        new_today: parseInt(stats.new_today),
+        new_7d: parseInt(stats.new_7d),
+        new_30d: parseInt(stats.new_30d),
+        d1_activated: parseInt(metrics.d1_activated),
+        d7_retained: parseInt(metrics.d7_retained),
+        referred_dau: parseInt(stats.active_today)
       })
       
     } finally {
