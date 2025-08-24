@@ -304,14 +304,20 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 flex justify-center gap-4">
+          <button
+            onClick={() => router.push('/analytics')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            View Analytics →
+          </button>
           <button
             onClick={() => {
               localStorage.removeItem('competition_token');
               localStorage.removeItem('participant_id');
               router.push('/join');
             }}
-            className="text-gray-500 underline"
+            className="px-6 py-2 text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             Sign out
           </button>
