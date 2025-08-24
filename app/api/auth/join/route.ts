@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     
     // Special test account exception
     const isTestAccount = emailLower === 'himanshuraj6771@gmail.com'
+    console.log('Join attempt:', { email: emailLower, isTestAccount })
     
     // Check if domain is allowed (or if it's the test account)
     const supabase = supabaseAdmin()
